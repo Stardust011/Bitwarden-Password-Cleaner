@@ -16,8 +16,19 @@ deleted_file_name = f"{input_file_name.replace('.json', '_deleted.json')}"
 check_file_name = f"{input_file_name.replace('.json', '_check.json')}"
 
 # 从输入文件加载数据
-with open(input_file_name, 'r', encoding='utf-8') as input_file:
-    data = json.load(input_file)
+try:
+    with open(input_file_name, 'r', encoding='utf-8') as input_file:
+        data = json.load(input_file)
+except FileNotFoundError:
+    print(f"[bright_red]错误: 找不到输入文件 '{input_file_name}'")
+    print(f"[yellow]请确保文件存在于当前目录中")
+    exit(1)
+except json.JSONDecodeError as e:
+    print(f"[bright_red]错误: 无法解析 JSON 文件: {e}")
+    exit(1)
+except Exception as e:
+    print(f"[bright_red]错误: 读取文件时发生错误: {e}")
+    exit(1)
 
 # 初始化变量
 processed_items = 0
@@ -31,7 +42,7 @@ def add_https_to_uri(uri):
     # 检查 uri 中是否有 ://
     if "://" in uri:
         return uri
-    return add_https_to_uri("https://" + uri)
+    return "https://" + uri
 
 def get_netloc(url):
     url_split = urlsplit(url)
@@ -92,10 +103,10 @@ def DoH_query(hostname):
                     print(f"[yellow]未找到 IPv6 地址解析")
             else:
                 print(f"[bright_red]DNS 请求失败, 状态码: {response.status_code}")
-                exit(1)
+                return False
     else:
         print(f"[bright_red]DNS 请求失败, 状态码: {response.status_code}")
-        exit(1)
+        return False
     return flag
 
 def get_valid_url(uri):
@@ -257,15 +268,19 @@ if __name__ == "__main__":
         add_items_to_write(item)
 
     # 保存最终数据，包括更新和删除的项目
-    data['items'] = items_ready_for_write
-    with open(output_file_name, 'w') as output_file:
-        json.dump(data, output_file, indent=2)
+    try:
+        data['items'] = items_ready_for_write
+        with open(output_file_name, 'w', encoding='utf-8') as output_file:
+            json.dump(data, output_file, indent=2, ensure_ascii=False)
 
-    with open(deleted_file_name, 'w') as deleted_file:
-        json.dump(items_deleted, deleted_file, indent=2)
+        with open(deleted_file_name, 'w', encoding='utf-8') as deleted_file:
+            json.dump(items_deleted, deleted_file, indent=2, ensure_ascii=False)
 
-    with open(check_file_name, 'w') as check_file:
-        json.dump(items_need_check, check_file, indent=2)
+        with open(check_file_name, 'w', encoding='utf-8') as check_file:
+            json.dump(items_need_check, check_file, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[bright_red]错误: 写入输出文件时发生错误: {e}")
+        exit(1)
 
     print(f"处理了 {processed_items} 个项目，共 {total_items} 个。")
     print(f"删除的项目: {len(items_deleted)}")
